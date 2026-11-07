@@ -1,6 +1,7 @@
 import "./compat.js";
 import { sfx } from "./sound.js";
 import { characterSvg, helperSvg } from "./character.js";
+import { createParents } from "./parents.js";
 
 const VIEW_W = 960;
 const VIEW_H = 540;
@@ -17,8 +18,8 @@ const DOOR_W = 130;
 
 const WARDROBE_X = { mum: 300, dad: 300 };
 const SHOP_X = 2750;
-const MUM_X = { mum: 1135, pinkMum: 1245, blueMum: 975, yellowMum: 880 };
-const DAD_X = { homeDad: 1170, pinkDad: 1230, blueDad: 1060, yellowDad: 750 };
+const MUM_DRESS = { home: "#7a3fa0", pink: "#c0608f", blue: "#3f6fb0", yellow: "#c08a2f" };
+const DAD_ROBE = { home: "#2f6fd0", pink: "#c0392b", blue: "#2f7a8a", yellow: "#1f7a4a" };
 const MUM_FACE_Y = 335;
 const ROOMS_MUM_WIDTH = 1700;
 const KITCHEN_WIDTH = 1900;
@@ -61,13 +62,13 @@ const ROOMS = {
     ],
     draw: drawOutside,
   },
-  pinkMum: mumRoom("pink", "#8a4a7a", [drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawShelf, 700], [drawCauldron, 880], [drawChair, 1000, "chair"], [drawMirror, 1150, null], [drawBed, 1300, "bed"], [drawMum, MUM_X.pinkMum, null, "#c0608f"]),
-  blueMum: mumRoom("blue", "#3f5a8a", [drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawCabinet, 740], [drawFireplace, 710], [drawCat, 850, null], [drawHangingRack, 990], [drawChair, 1050, "chair"], [drawBed, 1250, "bed"], [drawMum, MUM_X.blueMum, null, "#3f6fb0"]),
-  yellowMum: mumRoom("yellow", "#8a7a3a", [drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawCabinet, 480], [drawFireplace, 760], [drawMirror, 1020, null], [drawBroom, 1270], [drawChair, 1310, "chair"], [drawBed, 1400, "bed"], [drawMum, MUM_X.yellowMum, null, "#c08a2f"]),
-  homeDad: dadRoom("home", "#3a4a6e", [drawWardrobe, WARDROBE_X.dad], [drawCauldron, 600], [drawShelf, 760], [drawChair, 1000, "chair"], [drawBed, 1250, "bed", "#2f6fd0"], [drawDad, DAD_X.homeDad, null, "#2f6fd0"]),
-  pinkDad: dadRoom("pink", "#6e3a5a", [drawWardrobe, WARDROBE_X.dad], [drawBroom, 500], [drawBed, 650, "bed", "#c0392b"], [drawCauldron, 1100], [drawChair, 1300, "chair"], [drawDad, DAD_X.pinkDad, null, "#c0392b"]),
-  blueDad: dadRoom("blue", "#2f4a5e", [drawWardrobe, WARDROBE_X.dad], [drawShelf, 500], [drawChair, 800, "chair"], [drawHangingRack, 950], [drawCauldron, 1250], [drawBroom, 1450], [drawDad, DAD_X.blueDad, null, "#2f7a8a"]),
-  yellowDad: dadRoom("yellow", "#6e5e2f", [drawWardrobe, WARDROBE_X.dad], [drawCabinet, 490], [drawFireplace, 490], [drawBed, 1000, "bed", "#1f5a3a"], [drawMirror, 1380, null], [drawChair, 1480, "chair"], [drawDad, DAD_X.yellowDad, null, "#1f7a4a"]),
+  pinkMum: mumRoom("pink", "#8a4a7a", [drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawShelf, 700], [drawCauldron, 880], [drawChair, 1000, "chair"], [drawMirror, 1150, null], [drawBed, 1300, "bed"]),
+  blueMum: mumRoom("blue", "#3f5a8a", [drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawCabinet, 740], [drawFireplace, 710], [drawCat, 850, null], [drawHangingRack, 990], [drawChair, 1050, "chair"], [drawBed, 1250, "bed"]),
+  yellowMum: mumRoom("yellow", "#8a7a3a", [drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawCabinet, 480], [drawFireplace, 760], [drawMirror, 1020, null], [drawBroom, 1270], [drawChair, 1310, "chair"], [drawBed, 1400, "bed"]),
+  homeDad: dadRoom("home", "#3a4a6e", [drawWardrobe, WARDROBE_X.dad], [drawCauldron, 600], [drawShelf, 760], [drawChair, 1000, "chair"], [drawBed, 1250, "bed", "#2f6fd0"]),
+  pinkDad: dadRoom("pink", "#6e3a5a", [drawWardrobe, WARDROBE_X.dad], [drawBroom, 500], [drawBed, 650, "bed", "#c0392b"], [drawCauldron, 1100], [drawChair, 1300, "chair"]),
+  blueDad: dadRoom("blue", "#2f4a5e", [drawWardrobe, WARDROBE_X.dad], [drawShelf, 500], [drawChair, 800, "chair"], [drawHangingRack, 950], [drawCauldron, 1100], [drawBed, 1300, "bed", "#2f7a8a"], [drawBroom, 1660]),
+  yellowDad: dadRoom("yellow", "#6e5e2f", [drawWardrobe, WARDROBE_X.dad], [drawCabinet, 490], [drawFireplace, 490], [drawBed, 1000, "bed", "#1f5a3a"], [drawMirror, 1380, null], [drawChair, 1480, "chair"]),
   shop: backRoom("outside", "shop", "#2a1a3a", [[drawShelf, 400], [drawHangingCandles, 700], [drawShopLady, 1000], [drawShopCounter, 1000], [drawPumpkin, 1400], [drawShelf, 1450], [drawSpider, 1360], [drawCeilingBats, 450], [drawCeilingBats, 1150]]),
   myRoom: backRoom("home", "mine", "#4a5a9a", [[drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawShelf, 700], [drawBed, 1000, "bed", "#8e44ad"], [drawMirror, 1350, null], [drawChair, 1500, "chair"]]),
   homeKitchen: kitchenRoom("home", "#e8d9b5", "#5b8fb9"),
@@ -401,6 +402,7 @@ const nearDoor = (player) =>
 const keys = new Set();
 const tapped = new Set();
 let frame = 0;
+let world = null;
 
 addEventListener("keydown", (e) => {
   if (!e.repeat) tapped.add(e.code);
@@ -453,13 +455,15 @@ export async function startHome(canvas, character) {
     helperKind: character.helper,
     helperImage: character.helper === "none" ? null : await loadSvg(helperSvg(character.helper)),
   };
-  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, dadFace: (room) => ({ x: DAD_X[room], y: MUM_FACE_Y + 1 }), mumFace: (room) => ({ x: MUM_X[room], y: MUM_FACE_Y - 9 }), shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
+  world = createParents(ROOMS, DOOR_W);
+  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, parentControl: world, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
   let last = performance.now();
 
   const tick = (now) => {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     try {
+      world.step(dt);
       update(player, dt);
       draw(ctx, player);
     } catch (err) {
@@ -599,6 +603,7 @@ function draw(ctx, player) {
   ctx.save();
   ctx.translate(-camX, 0);
   room.draw(ctx);
+  drawParents(ctx, player.room);
   drawKid(ctx, player);
   if (!player.seat && (nearDoor(player) || nearSeat(player) || nearWardrobe(player) || nearPotion(player))) drawDoorHint(ctx, player);
   ctx.restore();
@@ -1004,6 +1009,106 @@ function drawDad(ctx, x, robe) {
   ctx.stroke();
 }
 
+const faceY = (p) => (p.kind === "mum" ? MUM_FACE_Y - 9 : MUM_FACE_Y + 1);
+
+function parentOps(p) {
+  if (p.pose === "sleep") return [["t", p.x + 15, FLOOR_Y - 92], ["r", -Math.PI / 2], ["t", 0, -FLOOR_Y]];
+  if (p.pose === "sit") return [["t", p.x, FLOOR_Y - p.goal.seat.height], ["s", p.dir, SIT_SQUASH], ["t", 0, -FLOOR_Y]];
+  const bob = p.state === "walking" ? Math.abs(Math.sin(p.walk)) * 4 : 0;
+  return [["t", p.x, groundY(p.room, p.x) - FLOOR_Y - bob], ["s", p.dir, 1]];
+}
+
+function applyOps(ctx, ops) {
+  for (const [op, a, b] of ops) {
+    if (op === "t") ctx.translate(a, b);
+    else if (op === "s") ctx.scale(a, b ?? 1);
+    else ctx.rotate(a);
+  }
+}
+
+function mapPoint(ops, x, y) {
+  for (const [op, a, b] of [...ops].reverse()) {
+    if (op === "t") { x += a; y += b; }
+    else if (op === "s") { x *= a; y *= b ?? 1; }
+    else { [x, y] = [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]; }
+  }
+  return { x, y };
+}
+
+function parentFace(id) {
+  const p = world.parents.find((q) => q.id === id);
+  const { x, y } = mapPoint(parentOps(p), 0, faceY(p));
+  const room = ROOMS[p.room];
+  return { x: x - Math.min(room.width - VIEW_W, Math.max(0, window.__game.player.x - VIEW_W / 2)), y };
+}
+
+function drawParents(ctx, room) {
+  const t = performance.now() / 1000;
+  for (const p of world.parents) {
+    if (p.room !== room) continue;
+    const ops = parentOps(p);
+    ctx.save();
+    applyOps(ctx, ops);
+    const colour = p.kind === "mum" ? MUM_DRESS[p.house] : DAD_ROBE[p.house];
+    (p.kind === "mum" ? drawMum : drawDad)(ctx, 0, colour);
+    if (p.carrying) {
+      ctx.fillStyle = "#9b5fff";
+      ctx.fillRect(24, MUM_FACE_Y + 66, 18, 20);
+    }
+    if (p.pose === "cook" && p.state === "doing") drawCooking(ctx, colour, t);
+    if (p.pose === "work" && p.state === "doing") drawSweeping(ctx, t);
+    ctx.restore();
+    if (p.pose === "sleep") {
+      const head = mapPoint(ops, 0, MUM_FACE_Y);
+      ctx.fillStyle = "#f2eaff";
+      ctx.font = "bold 24px system-ui, sans-serif";
+      ctx.textAlign = "left";
+      for (let i = 0; i < 3; i++) ctx.fillText("z", head.x + 20 + i * 16, head.y - 40 - i * 16 - ((t * 10 + i * 8) % 16));
+    }
+  }
+}
+
+function drawSweeping(ctx, t) {
+  const sway = Math.sin(t * 4) * 22;
+  ctx.strokeStyle = "#8a5a2b";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(28 + sway * 0.3, MUM_FACE_Y + 40);
+  ctx.lineTo(48 + sway, FLOOR_Y - 4);
+  ctx.stroke();
+  ctx.fillStyle = "#c9a227";
+  ctx.beginPath();
+  ctx.moveTo(34 + sway, FLOOR_Y - 2);
+  ctx.lineTo(70 + sway, FLOOR_Y - 2);
+  ctx.lineTo(58 + sway, FLOOR_Y - 22);
+  ctx.fill();
+}
+
+function drawCooking(ctx, colour, t) {
+  const tip = 76 + Math.sin(t * 4) * 8;
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(20, MUM_FACE_Y + 28);
+  ctx.lineTo(50, MUM_FACE_Y + 18);
+  ctx.stroke();
+  ctx.strokeStyle = "#8a5a2b";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(50, MUM_FACE_Y + 18);
+  ctx.lineTo(tip, 322);
+  ctx.stroke();
+  ctx.fillStyle = "#fffc";
+  for (let i = 0; i < 3; i++) {
+    const rise = (t * 30 + i * 18) % 54;
+    ctx.beginPath();
+    ctx.arc(80 + Math.sin(t * 3 + i) * 6, 305 - rise, 5 + i, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawShopLady(ctx, x) {
   const cx = x + 250;
   ctx.fillStyle = "#1f1230";
@@ -1090,7 +1195,6 @@ function drawMumRoom(ctx, w = ROOMS.mum.width, wall = "#5b3a6e", doorX = ROOMS.m
   drawChair(ctx, 1010);
   drawMirror(ctx, 1235, FLOOR_Y - 70);
   drawBed(ctx, 1300);
-  drawMum(ctx, MUM_X.mum, "#7a3fa0");
   drawDoor(ctx, doorX, "Back");
 }
 

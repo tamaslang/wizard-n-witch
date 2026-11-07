@@ -19,7 +19,7 @@ Design your own witch or wizard — from the shape of the head all the way down 
 1. **Open screen** — title and start button.
 2. **Character choice** — pick witch or wizard.
 3. **Character designer** — head shape, hair, clothes, hat, shoes, colours.
-4. **Home** — the player starts as a kid living in their house with their parents.
+4. **Home** — the player starts as a kid living in their house with their parents. Every mum and dad (ours and the neighbours') lives their own day: they walk, cook, sit, sleep, shop, work at the shop and visit other houses.
 5. **Adventure** — side-scrolling world; do good deeds to collect jewels.
 6. **Shop** — spend jewels to buy an animal helper.
 7. **Helper** — the animal follows the player on adventures.
