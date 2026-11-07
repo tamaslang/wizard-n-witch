@@ -2,6 +2,7 @@ import "./compat.js";
 import { sfx } from "./sound.js";
 import { characterSvg, helperSvg } from "./character.js";
 import { createParents } from "./parents.js";
+import { createTalk } from "./talk.js";
 
 const VIEW_W = 960;
 const VIEW_H = 540;
@@ -429,6 +430,11 @@ const nearFridge = (player) => {
   return x !== undefined && Math.abs(player.x - x) < FRIDGE_REACH;
 };
 
+const nearParent = (player) =>
+  world.parents
+    .filter((p) => p.room === player.room && Math.abs(p.x - player.x) < TALK_REACH)
+    .sort((a, b) => Math.abs(a.x - player.x) - Math.abs(b.x - player.x))[0];
+
 const doorCentre = (door) => door.x + DOOR_W / 2;
 const nearDoor = (player) =>
   ROOMS[player.room].doors.find((d) => Math.abs(player.x - doorCentre(d)) < DOOR_W / 2);
@@ -437,6 +443,8 @@ const keys = new Set();
 const tapped = new Set();
 let frame = 0;
 let world = null;
+let talk = null;
+const TALK_REACH = 160;
 
 
 addEventListener("keydown", (e) => {
@@ -490,8 +498,9 @@ export async function startHome(canvas, character) {
     helperKind: character.helper,
     helperImage: character.helper === "none" ? null : await loadSvg(helperSvg(character.helper)),
   };
+  talk = createTalk();
   world = createParents(ROOMS, DOOR_W, openFridges);
-  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
+  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, talk, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
   let last = performance.now();
 
   const tick = (now) => {
@@ -499,6 +508,7 @@ export async function startHome(canvas, character) {
     last = now;
     try {
       world.step(dt);
+      talk.step(dt);
       update(player, dt);
       draw(ctx, player);
     } catch (err) {
@@ -526,7 +536,9 @@ function update(player, dt) {
   const upPressed = UP_KEYS.some((k) => tapped.has(k));
   const leftPressed = ["ArrowLeft", "KeyA"].some((k) => tapped.has(k));
   const downPressed = ["ArrowDown", "KeyS"].some((k) => tapped.has(k));
+  const rightPressed = ["ArrowRight", "KeyD"].some((k) => tapped.has(k));
   tapped.clear();
+  if (rightPressed) talk.answer();
 
   if (player.seat) {
     if (move || upPressed || downPressed) {
@@ -572,6 +584,8 @@ function update(player, dt) {
     player.dress = ROBE_COLOURS[litRobe.get(player.room)];
     sfx.take();
   }
+  const parent = nearParent(player);
+  if (grounded && downPressed && !nearCounter(player) && !nearWardrobe(player)) talk.hello(parent);
   const door = nearDoor(player);
   if (grounded && !player.crouch && door && upPressed) enterDoor(player, door);
   else if (grounded && !player.crouch && !door && upPressed && nearSeat(player)) sitDown(player, nearSeat(player));
@@ -586,7 +600,8 @@ function update(player, dt) {
     sfx.take();
   }
   else if (grounded && !player.crouch && !door && !nearSeat(player) && upPressed && nearPotion(player)) takePotion(player, nearPotion(player));
-  else if (grounded && !player.crouch && !door && !nearSeat(player) && !nearWardrobe(player) && !nearPotion(player) && !nearFridge(player) && up) {
+  else if (grounded && !player.crouch && !door && !nearSeat(player) && !nearWardrobe(player) && !nearFridge(player) && upPressed && parent) talk.ask(parent);
+  else if (grounded && !player.crouch && !door && !nearSeat(player) && !nearWardrobe(player) && !nearPotion(player) && !nearFridge(player) && !parent && up) {
     player.vy = JUMP_SPEED;
     sfx.jump();
   }
@@ -644,6 +659,7 @@ function draw(ctx, player) {
   room.draw(ctx);
   drawParents(ctx, player.room);
   drawKid(ctx, player);
+  drawTalk(ctx, player);
   if (!player.seat && (nearDoor(player) || nearSeat(player) || nearWardrobe(player) || nearPotion(player) || nearFridge(player))) drawDoorHint(ctx, player);
   ctx.restore();
   drawBag(ctx, player);
@@ -1079,6 +1095,38 @@ function parentFace(id) {
   const { x, y } = mapPoint(parentOps(p), 0, faceY(p));
   const room = ROOMS[p.room];
   return { x: x - Math.min(room.width - VIEW_W, Math.max(0, window.__game.player.x - VIEW_W / 2)), y };
+}
+
+function drawBubble(ctx, text, x, y) {
+  ctx.font = "bold 18px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  const w = ctx.measureText(text).width + 24;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - 34, w, 34, 12);
+  ctx.moveTo(x - 8, y);
+  ctx.lineTo(x, y + 12);
+  ctx.lineTo(x + 8, y);
+  ctx.fill();
+  ctx.fillStyle = "#2a1a3a";
+  ctx.fillText(text, x, y - 11);
+}
+
+function drawTalk(ctx, player) {
+  const { state } = talk;
+  if (state.kid) drawBubble(ctx, state.kid.text, player.x, groundY(player.room, player.x) - 150);
+  for (const p of world.parents) {
+    const bubble = state.parents[p.id];
+    if (!bubble || p.room !== player.room) continue;
+    const head = mapPoint(parentOps(p), 0, faceY(p));
+    drawBubble(ctx, bubble.text, head.x, head.y - 50);
+  }
+  if (state.pending && world.parents.find((p) => p.id === state.pending.id)?.room === player.room) {
+    ctx.fillStyle = "#ffd166";
+    ctx.font = "bold 30px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("→", player.x + 40 + Math.sin(performance.now() / 150) * 4, groundY(player.room, player.x) - 70);
+  }
 }
 
 function drawParents(ctx, room) {
