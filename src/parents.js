@@ -7,17 +7,18 @@ export const HOUSES = {
   yellow: { hall: "yellow", kitchen: "yellowKitchen", mum: "yellowMum", dad: "yellowDad" },
 };
 
-export const ACTIVITIES = ["walk", "cook", "sit", "sleep", "shop", "visit", "work"];
+export const ACTIVITIES = ["walk", "cook", "sit", "sleep", "shop", "visit", "work", "fridge"];
 
 const SPEED = 140;
 const STOVE_X = 1030;
 const SHOP_X = 880;
+const FRIDGE_STAND_X = 1240;
 const START_X = {
   mum: 1135, pinkMum: 1245, blueMum: 975, yellowMum: 880,
   homeDad: 1170, pinkDad: 1230, blueDad: 1060, yellowDad: 750,
 };
 
-export function createParents(rooms, doorW, rng = Math.random) {
+export function createParents(rooms, doorW, openFridges = new Set(), rng = Math.random) {
   const doorCentre = (door) => door.x + doorW / 2;
   const rand = (a, b) => a + rng() * (b - a);
   const pick = (list) => list[Math.floor(rng() * list.length)];
@@ -64,6 +65,7 @@ export function createParents(rooms, doorW, rng = Math.random) {
       return chosen && { room: chosen.room, x: chosen.seat.x, seat: chosen.seat, dir: chosen.seat.dir, pose: "sit", duration: rand(6, 12) };
     }
     if (activity === "shop") return { room: "shop", x: SHOP_X, dir: 1, pose: "stand", duration: rand(4, 6), shopping: true };
+    if (activity === "fridge") return { room: h.kitchen, x: FRIDGE_STAND_X, dir: 1, pose: "fridge", duration: rand(4, 7), fridge: true };
     if (activity === "work") return { room: "shop", x: Math.round(rand(650, 800)), dir: 1, pose: "work", duration: rand(10, 15) };
     if (activity === "visit") {
       const room = HOUSES[pick(Object.keys(HOUSES).filter((k) => k !== p.house))].hall;
@@ -86,10 +88,19 @@ export function createParents(rooms, doorW, rng = Math.random) {
     assign(p, pick(ACTIVITIES.filter((a) => a !== p.activity)));
   }
 
+  function closeFridge(p) {
+    if (!p.opened) return;
+    openFridges.delete(p.room);
+    p.opened = false;
+  }
+
   function stepParent(p, dt) {
     if (p.state !== "walking") {
       p.timer -= dt;
-      if (p.timer <= 0) choose(p);
+      if (p.timer <= 0) {
+        closeFridge(p);
+        choose(p);
+      }
       return;
     }
     const { goal } = p;
@@ -117,6 +128,10 @@ export function createParents(rooms, doorW, rng = Math.random) {
     p.dir = goal.dir;
     p.timer = goal.duration;
     if (goal.shopping) p.carrying = true;
+    if (goal.fridge && !openFridges.has(p.room)) {
+      openFridges.add(p.room);
+      p.opened = true;
+    }
   }
 
   const byId = (id) => parents.find((p) => p.id === id);
@@ -130,6 +145,7 @@ export function createParents(rooms, doorW, rng = Math.random) {
       assign(byId(id), activity);
     },
     place(id, room, x) {
+      closeFridge(byId(id));
       Object.assign(byId(id), { room, x, state: "doing", pose: "stand", goal: null, timer: Infinity, dir: 1 });
     },
     advance(id, maxSeconds = 300) {

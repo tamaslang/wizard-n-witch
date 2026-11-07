@@ -23,6 +23,9 @@ const DAD_ROBE = { home: "#2f6fd0", pink: "#c0392b", blue: "#2f7a8a", yellow: "#
 const MUM_FACE_Y = 335;
 const ROOMS_MUM_WIDTH = 1700;
 const KITCHEN_WIDTH = 1900;
+const FRIDGE_X = 1375;
+const FRIDGE_REACH = 75;
+const openFridges = new Set();
 
 const SEATS = {
   chair: { reach: 50, height: 70, dir: -1, dx: 35 },
@@ -159,6 +162,7 @@ function kitchenRoom(parent, wall, accent) {
     width: KITCHEN_WIDTH,
     doors: [door],
     shelves: [500],
+    fridge: FRIDGE_X,
     seats: [
       { name: "stool", x: 1520, reach: 40, height: 45, dir: 1 },
       { name: "stool", x: 1740, reach: 40, height: 45, dir: -1 },
@@ -316,20 +320,7 @@ function drawKitchen(ctx, w, wall, accent) {
   ctx.fillRect(1510, 92, 4, 60);
   ctx.fillRect(1500, 150, 24, 8);
 
-  // fridge
-  ctx.fillStyle = "#f4f6fa";
-  ctx.beginPath();
-  ctx.roundRect(1300, 190, 150, 250, 8);
-  ctx.fill();
-  ctx.fillStyle = "#0003";
-  ctx.fillRect(1300, 290, 150, 4);
-  ctx.fillStyle = "#9aa";
-  ctx.fillRect(1420, 220, 8, 50);
-  ctx.fillRect(1420, 310, 8, 80);
-  ctx.fillStyle = "#e94b3c";
-  ctx.fillRect(1330, 210, 22, 22);
-  ctx.fillStyle = "#4bb36b";
-  ctx.fillRect(1360, 214, 22, 22);
+  drawFridge(ctx, openFridges.has(drawingRoom));
 
   // table with stools
   ctx.fillStyle = "#8a5a2b";
@@ -349,6 +340,44 @@ function drawKitchen(ctx, w, wall, accent) {
   ctx.beginPath();
   ctx.ellipse(1630, 380, 24, 6, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawFridge(ctx, open) {
+  ctx.fillStyle = "#f4f6fa";
+  ctx.beginPath();
+  ctx.roundRect(1300, 190, 150, 250, 8);
+  ctx.fill();
+  if (!open) {
+    ctx.fillStyle = "#0003";
+    ctx.fillRect(1300, 290, 150, 4);
+    ctx.fillStyle = "#9aa";
+    ctx.fillRect(1420, 220, 8, 50);
+    ctx.fillRect(1420, 310, 8, 80);
+    ctx.fillStyle = "#e94b3c";
+    ctx.fillRect(1330, 210, 22, 22);
+    ctx.fillStyle = "#4bb36b";
+    ctx.fillRect(1360, 214, 22, 22);
+    return;
+  }
+  ctx.fillStyle = "#e3f4ff";
+  ctx.fillRect(1312, 202, 126, 226);
+  ctx.fillStyle = "#9cc";
+  ctx.fillRect(1312, 275, 126, 5);
+  ctx.fillRect(1312, 350, 126, 5);
+  ctx.font = "32px serif";
+  ctx.textAlign = "center";
+  const rows = [["🍰", "🧀", "🍓"], ["🥛", "🍗", "🍎"], ["🥕", "🥧", "🍫"]];
+  rows.forEach((row, r) => row.forEach((food, c) => ctx.fillText(food, 1340 + c * 35, 268 + r * 76 + (r === 2 ? 2 : 0))));
+  ctx.fillStyle = "#dfe4ec";
+  ctx.beginPath();
+  ctx.moveTo(1300, 190);
+  ctx.lineTo(1262, 202);
+  ctx.lineTo(1262, 428);
+  ctx.lineTo(1300, 440);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#9aa";
+  ctx.fillRect(1268, 240, 5, 50);
 }
 
 const POTION_COLOURS = ["#ff5fa2", "#5fd0ff", "#7dff8a", "#ffd166"];
@@ -395,6 +424,11 @@ const nearWardrobe = (player) =>
 const nearSeat = (player) =>
   (ROOMS[player.room].seats ?? []).find((seat) => Math.abs(player.x - seat.x) < seat.reach);
 
+const nearFridge = (player) => {
+  const x = ROOMS[player.room].fridge;
+  return x !== undefined && Math.abs(player.x - x) < FRIDGE_REACH;
+};
+
 const doorCentre = (door) => door.x + DOOR_W / 2;
 const nearDoor = (player) =>
   ROOMS[player.room].doors.find((d) => Math.abs(player.x - doorCentre(d)) < DOOR_W / 2);
@@ -403,6 +437,7 @@ const keys = new Set();
 const tapped = new Set();
 let frame = 0;
 let world = null;
+
 
 addEventListener("keydown", (e) => {
   if (!e.repeat) tapped.add(e.code);
@@ -455,8 +490,8 @@ export async function startHome(canvas, character) {
     helperKind: character.helper,
     helperImage: character.helper === "none" ? null : await loadSvg(helperSvg(character.helper)),
   };
-  world = createParents(ROOMS, DOOR_W);
-  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, parentControl: world, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
+  world = createParents(ROOMS, DOOR_W, openFridges);
+  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
   let last = performance.now();
 
   const tick = (now) => {
@@ -546,8 +581,12 @@ function update(player, dt) {
     litRobe.delete(player.room);
     sfx.take();
   }
+  else if (grounded && !player.crouch && !door && !nearSeat(player) && upPressed && nearFridge(player)) {
+    if (!openFridges.delete(player.room)) openFridges.add(player.room);
+    sfx.take();
+  }
   else if (grounded && !player.crouch && !door && !nearSeat(player) && upPressed && nearPotion(player)) takePotion(player, nearPotion(player));
-  else if (grounded && !player.crouch && !door && !nearSeat(player) && !nearWardrobe(player) && !nearPotion(player) && up) {
+  else if (grounded && !player.crouch && !door && !nearSeat(player) && !nearWardrobe(player) && !nearPotion(player) && !nearFridge(player) && up) {
     player.vy = JUMP_SPEED;
     sfx.jump();
   }
@@ -605,7 +644,7 @@ function draw(ctx, player) {
   room.draw(ctx);
   drawParents(ctx, player.room);
   drawKid(ctx, player);
-  if (!player.seat && (nearDoor(player) || nearSeat(player) || nearWardrobe(player) || nearPotion(player))) drawDoorHint(ctx, player);
+  if (!player.seat && (nearDoor(player) || nearSeat(player) || nearWardrobe(player) || nearPotion(player) || nearFridge(player))) drawDoorHint(ctx, player);
   ctx.restore();
   drawBag(ctx, player);
 }
@@ -1057,6 +1096,7 @@ function drawParents(ctx, room) {
     }
     if (p.pose === "cook" && p.state === "doing") drawCooking(ctx, colour, t);
     if (p.pose === "work" && p.state === "doing") drawSweeping(ctx, t);
+    if (p.pose === "fridge" && p.state === "doing") drawSnack(ctx, colour);
     ctx.restore();
     if (p.pose === "sleep") {
       const head = mapPoint(ops, 0, MUM_FACE_Y);
@@ -1066,6 +1106,19 @@ function drawParents(ctx, room) {
       for (let i = 0; i < 3; i++) ctx.fillText("z", head.x + 20 + i * 16, head.y - 40 - i * 16 - ((t * 10 + i * 8) % 16));
     }
   }
+}
+
+function drawSnack(ctx, colour) {
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(20, MUM_FACE_Y + 28);
+  ctx.lineTo(50, MUM_FACE_Y + 40);
+  ctx.stroke();
+  ctx.font = "26px serif";
+  ctx.textAlign = "center";
+  ctx.fillText("🍰", 58, MUM_FACE_Y + 48);
 }
 
 function drawSweeping(ctx, t) {
