@@ -1056,7 +1056,7 @@ function drawSpider(ctx, x) {
   }
 }
 
-function drawMum(ctx, x, dress) {
+function drawMum(ctx, x, dress, armUp = false) {
   ctx.fillStyle = "#4a2a1a";
   ctx.beginPath();
   ctx.ellipse(x, MUM_FACE_Y + 14, 26, 40, 0, 0, Math.PI * 2);
@@ -1076,12 +1076,14 @@ function drawMum(ctx, x, dress) {
   ctx.beginPath();
   ctx.moveTo(x - 14, MUM_FACE_Y + 26);
   ctx.lineTo(x - 28, MUM_FACE_Y + 62);
-  ctx.moveTo(x + 14, MUM_FACE_Y + 26);
-  ctx.lineTo(x + 28, MUM_FACE_Y + 62);
+  if (!armUp) {
+    ctx.moveTo(x + 14, MUM_FACE_Y + 26);
+    ctx.lineTo(x + 28, MUM_FACE_Y + 62);
+  }
   ctx.stroke();
   ctx.fillStyle = "#e8d5b5";
   ctx.beginPath();
-  for (const [cx, cy, r] of [[x - 28, MUM_FACE_Y + 64, 6], [x + 28, MUM_FACE_Y + 64, 6], [x, MUM_FACE_Y, 20]]) {
+  for (const [cx, cy, r] of [[x - 28, MUM_FACE_Y + 64, 6], [x + 28, MUM_FACE_Y + 64, 6], [x, MUM_FACE_Y, 20]].filter(([cx]) => !(armUp && cx === x + 28))) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
@@ -1102,7 +1104,7 @@ function drawMum(ctx, x, dress) {
   ctx.fill();
 }
 
-function drawDad(ctx, x, robe) {
+function drawDad(ctx, x, robe, armUp = false) {
   const y = MUM_FACE_Y;
   ctx.fillStyle = robe;
   ctx.beginPath();
@@ -1121,11 +1123,13 @@ function drawDad(ctx, x, robe) {
   ctx.beginPath();
   ctx.moveTo(x - 18, y + 26);
   ctx.lineTo(x - 32, y + 64);
-  ctx.moveTo(x + 18, y + 26);
-  ctx.lineTo(x + 32, y + 64);
+  if (!armUp) {
+    ctx.moveTo(x + 18, y + 26);
+    ctx.lineTo(x + 32, y + 64);
+  }
   ctx.stroke();
   ctx.fillStyle = "#e8d5b5";
-  for (const [cx, cy, r] of [[x - 32, y + 66, 6], [x + 32, y + 66, 6], [x, y, 21]]) {
+  for (const [cx, cy, r] of [[x - 32, y + 66, 6], [x + 32, y + 66, 6], [x, y, 21]].filter(([cx]) => !(armUp && cx === x + 32))) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
@@ -1225,7 +1229,8 @@ function drawParents(ctx, room) {
     ctx.save();
     applyOps(ctx, ops);
     const colour = p.kind === "mum" ? MUM_DRESS[p.house] : DAD_ROBE[p.house];
-    (p.kind === "mum" ? drawMum : drawDad)(ctx, 0, colour);
+    const armUp = p.state === "doing" && ["cook", "fridge"].includes(p.pose);
+    (p.kind === "mum" ? drawMum : drawDad)(ctx, 0, colour, armUp);
     if (p.carrying) {
       ctx.fillStyle = "#9b5fff";
       ctx.fillRect(24, MUM_FACE_Y + 66, 18, 20);
@@ -1244,6 +1249,13 @@ function drawParents(ctx, room) {
   }
 }
 
+function drawHand(ctx, x, y) {
+  ctx.fillStyle = "#e8d5b5";
+  ctx.beginPath();
+  ctx.arc(x, y, 6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawSnack(ctx, colour) {
   ctx.strokeStyle = colour;
   ctx.lineWidth = 9;
@@ -1252,6 +1264,7 @@ function drawSnack(ctx, colour) {
   ctx.moveTo(20, MUM_FACE_Y + 28);
   ctx.lineTo(50, MUM_FACE_Y + 40);
   ctx.stroke();
+  drawHand(ctx, 50, MUM_FACE_Y + 40);
   ctx.font = "26px serif";
   ctx.textAlign = "center";
   ctx.fillText("🍰", 58, MUM_FACE_Y + 48);
@@ -1283,6 +1296,7 @@ function drawCooking(ctx, colour, t) {
   ctx.moveTo(20, MUM_FACE_Y + 28);
   ctx.lineTo(50, MUM_FACE_Y + 18);
   ctx.stroke();
+  drawHand(ctx, 50, MUM_FACE_Y + 18);
   ctx.strokeStyle = "#8a5a2b";
   ctx.lineWidth = 4;
   ctx.beginPath();

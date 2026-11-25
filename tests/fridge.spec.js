@@ -69,3 +69,29 @@ test("every mum and dad can open a fridge and close it again", async ({ page }) 
     expect(result.closed).toBe(true);
   }
 });
+
+const SKIN = [232, 213, 181, 255];
+const ids = ["mum", "pinkMum", "blueMum", "yellowMum", "homeDad", "pinkDad", "blueDad", "yellowDad"];
+
+for (const id of ids) {
+  test(`${id} has no extra hand hanging down while reaching into the fridge`, async ({ page }) => {
+    await startGame(page);
+    const kitchen = await page.evaluate((id) => {
+      const g = window.__game;
+      g.parentControl.assign(id, "fridge");
+      g.parentControl.advance(id, 600);
+      const p = g.parents.find((q) => q.id === id);
+      p.timer = 1e9;
+      Object.assign(g.player, { room: p.room, x: p.x - 200, y: 0, vy: 0 });
+      return p.room;
+    }, id);
+    expect(kitchen).toMatch(/Kitchen$/);
+    await page.waitForTimeout(200);
+    const spot = (offsetY) => page.evaluate(([id, dy]) => {
+      const { x, y } = window.__game.parentFace(id);
+      return [...document.getElementById("game").getContext("2d").getImageData(x + 28, y + dy, 1, 1).data];
+    }, [id, offsetY]);
+    const dy = id.endsWith("Mum") || id === "mum" ? 73 : 63;
+    expect(await spot(dy)).not.toEqual(SKIN);
+  });
+}
