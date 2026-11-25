@@ -12,6 +12,7 @@ Design your own witch or wizard — from the shape of the head all the way down 
 
 - Browser game for **desktop, laptop and phones** (keyboard on desktop; on-screen buttons on touch devices).
 - **Action keys:** whenever something can be done, a hint pops up as an overlay on the game (the picture never jumps). The main action is highlighted and runs with **Enter**; the others use their letter: **E** enter a door, **C** sit / lie down / stand up, **O** open or close a wardrobe or fridge, **T** take a potion (or take one out of your cupboard), **P** pay at the counter / put potions in your cupboard, **N** next dress, **G** put on the dress, **H** say hello, **Q** ask a question, **R** answer. On touch devices the same hints become big tappable buttons. The old arrow-key shortcuts still work.
+- **Sports arena:** a spooky arena on the street, right of the shop. Inside there is a running track with four hurdles (jump over them to score; walking into one bumps you back), a **START** line (**F** starts a timed race, the **FINISH** line stops it and keeps your best time) and a basketball hoop (**B** shoots a basket). A scoreboard shows hurdles, baskets and best time.
 - On touch devices, ◀ ▶ walk and ▲ jumps / uses doors and seats / ▼ crouches. Landscape works best.
 - Modern, widely compatible web tech: plain HTML, CSS and ES modules; no build step.
 

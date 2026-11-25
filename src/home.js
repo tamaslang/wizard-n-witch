@@ -3,6 +3,7 @@ import { sfx } from "./sound.js";
 import { characterSvg, helperSvg } from "./character.js";
 import { createParents } from "./parents.js";
 import { createTalk } from "./talk.js";
+import * as sp from "./sports.js";
 
 const VIEW_W = 960;
 const VIEW_H = 540;
@@ -19,6 +20,7 @@ const DOOR_W = 130;
 
 const WARDROBE_X = { mum: 300, dad: 300 };
 const SHOP_X = 2750;
+const ARENA_X = 3050;
 const MUM_DRESS = { home: "#7a3fa0", pink: "#c0608f", blue: "#3f6fb0", yellow: "#c08a2f" };
 const DAD_ROBE = { home: "#2f6fd0", pink: "#c0392b", blue: "#2f7a8a", yellow: "#1f7a4a" };
 const MUM_FACE_Y = 335;
@@ -63,6 +65,7 @@ const ROOMS = {
       { id: "n2", x: 1685, to: "blue", arrive: "out" },
       { id: "n3", x: 2185, to: "yellow", arrive: "out" },
       { id: "shop", x: SHOP_X - DOOR_W / 2, to: "shop", arrive: "back" },
+      { id: "arena", x: ARENA_X - DOOR_W / 2, to: "arena", arrive: "back" },
     ],
     draw: drawOutside,
   },
@@ -74,6 +77,11 @@ const ROOMS = {
   blueDad: dadRoom("blue", "#2f4a5e", [drawWardrobe, WARDROBE_X.dad], [drawShelf, 500], [drawChair, 800, "chair"], [drawHangingRack, 950], [drawCauldron, 1100], [drawBed, 1300, "bed", "#2f7a8a"], [drawBroom, 1660]),
   yellowDad: dadRoom("yellow", "#6e5e2f", [drawWardrobe, WARDROBE_X.dad], [drawCabinet, 490], [drawFireplace, 490], [drawBed, 1000, "bed", "#1f5a3a"], [drawMirror, 1380, null], [drawChair, 1480, "chair"]),
   shop: backRoom("outside", "shop", "#2a1a3a", [[drawShelf, 400], [drawHangingCandles, 700], [drawShopLady, 1000], [drawShopCounter, 1000], [drawPumpkin, 1400], [drawShelf, 1450], [drawSpider, 1360], [drawCeilingBats, 450], [drawCeilingBats, 1150]]),
+  arena: {
+    width: sp.ARENA_WIDTH,
+    doors: [{ id: "back", x: 150, label: "Out", to: "outside", arrive: "arena" }],
+    draw: drawArena,
+  },
   myRoom: backRoom("home", "mine", "#4a5a9a", [[drawWardrobe, WARDROBE_X.mum], [drawDresser, 480], [drawShelf, 700], [drawBed, 1000, "bed", "#8e44ad"], [drawMirror, 1350, null], [drawChair, 1500, "chair"]]),
   homeKitchen: kitchenRoom("home", "#e8d9b5", "#5b8fb9"),
   pinkKitchen: kitchenRoom("pink", "#f0d3e0", "#c0608f"),
@@ -444,6 +452,7 @@ const tapped = new Set();
 let frame = 0;
 let world = null;
 let talk = null;
+let sports = sp.createSports();
 const TALK_REACH = 160;
 
 
@@ -499,9 +508,11 @@ export async function startHome(canvas, character) {
     helperImage: character.helper === "none" ? null : await loadSvg(helperSvg(character.helper)),
   };
   tapped.clear();
+  sports = sp.createSports();
   talk = createTalk();
+  sports = sp.createSports();
   world = createParents(ROOMS, DOOR_W, openFridges);
-  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, actions: () => availableActions(player), talk, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
+  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, actions: () => availableActions(player), talk, sports: () => sports, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
   let last = performance.now();
 
   const tick = (now) => {
@@ -555,6 +566,7 @@ function update(player, dt) {
       return;
     }
   }
+  if (player.room === "arena" && sp.tickRace(sports, dt, player.x)) sfx.take();
   const down = keys.has("ArrowDown") || keys.has("KeyS");
   const wasCrouching = player.crouch;
   player.crouch = down && player.y === 0 && !(nearWardrobe(player) && openWardrobes.has(player.room)) && !nearCounter(player) && !(player.room === "myRoom" && nearWardrobe(player));
@@ -563,7 +575,12 @@ function update(player, dt) {
   if (move) {
     player.dir = move;
     player.walk += dt * 10;
-    player.x = Math.min(ROOMS[player.room].width - 40, Math.max(40, player.x + move * speed * dt));
+    const nextX = Math.min(ROOMS[player.room].width - 40, Math.max(40, player.x + move * speed * dt));
+    if (player.room === "arena") {
+      const r = sp.moveThroughHurdles(sports, player.x, nextX, player.y);
+      player.x = r.x;
+      if (r.bumped) sfx.stand();
+    } else player.x = nextX;
   } else {
     player.walk = 0;
   }
@@ -675,6 +692,10 @@ function availableActions(player) {
   if (nearFridge(player)) add("O", openFridges.has(player.room) ? "Close fridge" : "Open fridge", () => toggleFridge(player));
   if (potion) add("T", player.room === "shop" ? "Put potion in basket" : "Take potion", () => takePotion(player, potion));
   if (nearCounter(player) && player.basket.length) add("P", `Pay ${player.basket.length * POTION_PRICE} coins`, () => payAtCounter(player));
+  if (player.room === "arena") {
+    if (sp.nearStart(player.x)) add("F", sports.racing ? "Restart race" : "Start race", () => { sp.startRace(sports); sfx.take(); });
+    if (sp.nearHoop(player.x)) add("B", "Shoot a basket", () => { sp.shoot(sports); sfx.take(); });
+  }
   if (parent) {
     add("H", "Say hello", () => talk.hello(parent));
     add("Q", "Ask a question", () => talk.ask(parent));
@@ -752,6 +773,7 @@ function draw(ctx, player) {
   if (!player.seat && (nearDoor(player) || nearSeat(player) || nearWardrobe(player) || nearPotion(player) || nearFridge(player))) drawDoorHint(ctx, player);
   ctx.restore();
   drawBag(ctx, player);
+  if (player.room === "arena") drawScoreboard(ctx);
 }
 
 function drawBag(ctx, player) {
@@ -813,6 +835,7 @@ function drawOutside(ctx) {
   for (let x = 100; x < w; x += 230) ctx.fillRect(x, 40 + ((x * 7) % 120), 4, 4);
   for (const n of NEIGHBOURS) drawHouse(ctx, n.x, n);
   drawShopFront(ctx, SHOP_X);
+  drawArenaFront(ctx, ARENA_X);
   for (const x of [760, 1420, 2020]) drawTree(ctx, x);
   drawHill(ctx, w);
   ctx.fillStyle = "#2f6b4a";
@@ -965,6 +988,73 @@ function drawPumpkin(ctx, x) {
   ctx.lineTo(x + 12, FLOOR_Y - 8);
   ctx.lineTo(x - 12, FLOOR_Y - 8);
   ctx.fill();
+}
+
+function drawArenaFront(ctx, cx) {
+  const half = 120;
+  drawHouse(ctx, cx, { half, h: 200, wall: "#2e2a4a", roof: "#1d1030", door: "#e07a1f" });
+  ctx.fillStyle = "#1a0f24";
+  ctx.fillRect(cx - 90, FLOOR_Y - 175, 180, 34);
+  ctx.fillStyle = "#ffb347";
+  ctx.font = "bold 24px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("ARENA", cx, FLOOR_Y - 150);
+  drawPumpkin(ctx, cx + 95);
+  drawBat(ctx, cx - 70, FLOOR_Y - 330, 0.8);
+}
+
+function drawArena(ctx) {
+  const w = sp.ARENA_WIDTH;
+  paintRoom(ctx, w, "#2a2448");
+  ctx.fillStyle = "#3b6b3a";
+  ctx.fillRect(0, FLOOR_Y, w, 40);
+  ctx.fillStyle = "#fff";
+  for (const x of [sp.START_X, sp.FINISH_X]) ctx.fillRect(x - 3, FLOOR_Y, 6, 40);
+  ctx.fillStyle = "#ffb347";
+  ctx.font = "bold 20px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("START", sp.START_X, FLOOR_Y - 20);
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = i % 2 ? "#fff" : "#111";
+    ctx.fillRect(sp.FINISH_X - 8, FLOOR_Y - 120 + i * 15, 8, 15);
+    ctx.fillRect(sp.FINISH_X, FLOOR_Y - 120 + i * 15 + 0, 8, 15);
+  }
+  ctx.fillStyle = "#ffb347";
+  ctx.fillText("FINISH", sp.FINISH_X, FLOOR_Y - 130);
+  for (const hx of sp.HURDLES) {
+    ctx.fillStyle = "#e8e0ff";
+    ctx.fillRect(hx - 10, FLOOR_Y - sp.HURDLE_H, 20, 6);
+    ctx.fillStyle = "#e07a1f";
+    ctx.fillRect(hx - 10, FLOOR_Y - sp.HURDLE_H, 4, sp.HURDLE_H);
+    ctx.fillRect(hx + 6, FLOOR_Y - sp.HURDLE_H, 4, sp.HURDLE_H);
+  }
+  const hx = sp.HOOP_X;
+  ctx.fillStyle = "#6a5a8a";
+  ctx.fillRect(hx + 40, FLOOR_Y - 300, 10, 300);
+  ctx.fillStyle = "#f2eaff";
+  ctx.fillRect(hx + 20, FLOOR_Y - 320, 30, 70);
+  ctx.strokeStyle = "#ff6a2a";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.ellipse(hx - 5, FLOOR_Y - 260, 28, 8, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  drawPumpkin(ctx, 1600);
+  drawCeilingBats(ctx, 800);
+  drawCeilingBats(ctx, 1700);
+  drawDoor(ctx, 150, "Out");
+}
+
+function drawScoreboard(ctx) {
+  const best = sports.best === null ? "–" : `${sports.best.toFixed(1)}s`;
+  const race = sports.racing ? `  ⏱ ${sports.time.toFixed(1)}s` : "";
+  const text = `Hurdles ${sports.hurdles} · Baskets ${sports.baskets} · Best ${best}${race}`;
+  ctx.font = "bold 20px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  const w = ctx.measureText(text).width + 30;
+  ctx.fillStyle = "#1b1033cc";
+  ctx.fillRect(VIEW_W / 2 - w / 2, 10, w, 36);
+  ctx.fillStyle = "#ffd166";
+  ctx.fillText(text, VIEW_W / 2, 36);
 }
 
 function drawShopFront(ctx, cx) {
