@@ -498,6 +498,7 @@ export async function startHome(canvas, character) {
     helperKind: character.helper,
     helperImage: character.helper === "none" ? null : await loadSvg(helperSvg(character.helper)),
   };
+  tapped.clear();
   talk = createTalk();
   world = createParents(ROOMS, DOOR_W, openFridges);
   window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, actions: () => availableActions(player), talk, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
@@ -538,7 +539,7 @@ function update(player, dt) {
   const downPressed = ["ArrowDown", "KeyS"].some((k) => tapped.has(k));
   const rightPressed = ["ArrowRight", "KeyD"].some((k) => tapped.has(k));
   const actions = player.room ? availableActions(player) : [];
-  const actionTaps = actions.filter((a) => tapped.has(a.code));
+  const actionTaps = actions.filter((a, i) => tapped.has(a.code) || (i === 0 && tapped.has("Enter")));
   tapped.clear();
   for (const a of actionTaps) a.run();
   syncActionBar(availableActions(player));
@@ -690,12 +691,12 @@ function syncActionBar(actions) {
   const signature = actions.map((a) => `${a.code}:${a.label}`).join("|");
   if (signature === barSignature) return;
   barSignature = signature;
-  actionBar.replaceChildren(...actions.map((a) => {
+  actionBar.replaceChildren(...actions.map((a, i) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "action";
+    b.className = i === 0 ? "hint-chip main" : "hint-chip";
     b.dataset.code = a.code;
-    b.innerHTML = `<kbd>${a.key}</kbd> <span></span>`;
+    b.innerHTML = `<kbd>${i === 0 ? "Enter" : a.key}</kbd> <span></span>`;
     b.lastElementChild.textContent = a.label;
     const press = (e) => { e.preventDefault(); tapped.add(a.code); };
     b.addEventListener("pointerdown", press);

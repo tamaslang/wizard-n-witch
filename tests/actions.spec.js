@@ -13,14 +13,14 @@ const stand = (page, room, x, extra = {}) =>
     Object.assign(window.__game.player, { room, x, y: 0, vy: 0, ...extra });
   }, [room, x, extra]);
 
-const hints = (page) => page.locator("#actions .action").allTextContents();
-const hint = (page, text) => page.locator("#actions .action", { hasText: text });
+const hints = (page) => page.locator("#actions .hint-chip").allTextContents();
+const hint = (page, text) => page.locator("#actions .hint-chip", { hasText: text });
 
 test("a hint shows the key when a door is close, and E uses it", async ({ page }) => {
   await startGame(page);
   await stand(page, "home", 1765);
   await expect(hint(page, "Enter Mum")).toBeVisible();
-  await expect(hint(page, "Enter Mum").locator("kbd")).toHaveText("E");
+  await expect(hint(page, "Enter Mum").locator("kbd")).toHaveText("Enter");
   await page.keyboard.press("KeyE");
   await page.waitForFunction(() => window.__game.player.room === "mum");
 });
@@ -32,7 +32,7 @@ test("T takes a potion from a shelf and the hint goes away when none are close",
   await page.keyboard.press("KeyT");
   await expect.poll(() => page.evaluate(() => window.__game.player.bag.length)).toBe(1);
   await stand(page, "myRoom", 1650);
-  await expect(page.locator("#actions .action")).toHaveCount(0);
+  await expect(page.locator("#actions .hint-chip")).toHaveCount(0);
 });
 
 test("O opens the fridge, C sits and stands, H says hello", async ({ page }) => {
@@ -93,4 +93,39 @@ test.describe("on a touch phone", () => {
     await button.dispatchEvent("pointerdown");
     await expect.poll(() => page.evaluate(() => window.__game.player.bag.length)).toBe(1);
   });
+});
+
+test("Enter does the main action", async ({ page }) => {
+  await startGame(page);
+  await stand(page, "home", 1765);
+  await expect(hint(page, "Enter Mum")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => window.__game.player.room === "mum");
+});
+
+test("Enter does nothing when there is no action (unhappy path)", async ({ page }) => {
+  await startGame(page);
+  await stand(page, "myRoom", 1650);
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => window.__game.player.room)).toBe("myRoom");
+});
+
+test("the hint is an overlay: the page does not move when it appears", async ({ page }) => {
+  await startGame(page);
+  await stand(page, "myRoom", 1650);
+  await expect(page.locator("#actions .hint-chip")).toHaveCount(0);
+  const before = await page.evaluate(() => document.getElementById("game").getBoundingClientRect().toJSON());
+  const heightBefore = await page.evaluate(() => document.documentElement.scrollHeight);
+  await stand(page, "home", 1765);
+  await expect(hint(page, "Enter Mum")).toBeVisible();
+  const after = await page.evaluate(() => document.getElementById("game").getBoundingClientRect().toJSON());
+  expect(after).toEqual(before);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(heightBefore);
+  const inside = await page.evaluate(() => {
+    const c = document.getElementById("game").getBoundingClientRect();
+    const a = document.querySelector("#actions .hint-chip").getBoundingClientRect();
+    return a.top >= c.top && a.bottom <= c.bottom;
+  });
+  expect(inside).toBe(true);
 });
