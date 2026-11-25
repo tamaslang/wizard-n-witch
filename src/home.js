@@ -35,6 +35,11 @@ const SEATS = {
   bed: { reach: 170, height: 55, dir: 1, dx: 150 },
 };
 
+const SPOOKY_FNS = [drawCeilingBats, drawHangingCandles, drawPumpkin, drawSpider];
+const HOUSE_DECOR = [[drawCeilingBats, 560], [drawCeilingBats, 1280], [drawHangingCandles, 820], [drawSpider, 1100]];
+const spookyCount = (items) => items.filter(([fn]) => SPOOKY_FNS.includes(fn)).length;
+const drawHouseDecor = (ctx) => { for (const [fn, x] of HOUSE_DECOR) fn(ctx, x); };
+
 const ROOMS = {
   home: {
     width: 2400,
@@ -45,6 +50,7 @@ const ROOMS = {
       { id: "mum", x: 1700, label: "Mum", to: "mum", arrive: "home" },
       { id: "out", x: 2000, label: "Out", to: "outside", arrive: "home" },
     ],
+    spooky: HOUSE_DECOR.length,
     draw: drawHome,
   },
   mum: {
@@ -55,6 +61,7 @@ const ROOMS = {
       { name: "chair", x: 1045, reach: 50, height: 70, dir: -1 },
       { name: "bed", x: 1450, reach: 170, height: 55, dir: 1 },
     ],
+    spooky: HOUSE_DECOR.length,
     draw: drawMumRoom,
   },
   outside: {
@@ -76,7 +83,7 @@ const ROOMS = {
   pinkDad: dadRoom("pink", "#6e3a5a", [drawWardrobe, WARDROBE_X.dad], [drawBroom, 500], [drawBed, 650, "bed", "#c0392b"], [drawCauldron, 1100], [drawChair, 1300, "chair"]),
   blueDad: dadRoom("blue", "#2f4a5e", [drawWardrobe, WARDROBE_X.dad], [drawShelf, 500], [drawChair, 800, "chair"], [drawHangingRack, 950], [drawCauldron, 1100], [drawBed, 1300, "bed", "#2f7a8a"], [drawBroom, 1660]),
   yellowDad: dadRoom("yellow", "#6e5e2f", [drawWardrobe, WARDROBE_X.dad], [drawCabinet, 490], [drawFireplace, 490], [drawBed, 1000, "bed", "#1f5a3a"], [drawMirror, 1380, null], [drawChair, 1480, "chair"]),
-  shop: backRoom("outside", "shop", "#2a1a3a", [[drawShelf, 400], [drawHangingCandles, 700], [drawShopLady, 1000], [drawShopCounter, 1000], [drawPumpkin, 1400], [drawShelf, 1450], [drawSpider, 1360], [drawCeilingBats, 450], [drawCeilingBats, 1150]]),
+  shop: backRoom("outside", "shop", "#2a1a3a", [[drawShelf, 400], [drawHangingCandles, 700], [drawShopLady, 1000], [drawPetCages, 0], [drawShopCounter, 1000], [drawPumpkin, 1400], [drawShelf, 1450], [drawSpider, 1360], [drawCeilingBats, 450], [drawCeilingBats, 1150]]),
   arena: {
     width: sp.ARENA_WIDTH,
     doors: [{ id: "back", x: 150, label: "Out", to: "outside", arrive: "arena" }],
@@ -100,7 +107,8 @@ function dadRoom(parent, wall, ...items) {
   return backRoom(parent, "dad", wall, items);
 }
 
-function backRoom(parent, arrive, wall, items) {
+function backRoom(parent, arrive, wall, shown) {
+  const items = parent === "outside" ? shown : [...shown, ...HOUSE_DECOR];
   const door = { id: "back", x: 150, label: "Back", to: parent, arrive };
   return {
     width: ROOMS_MUM_WIDTH,
@@ -108,6 +116,7 @@ function backRoom(parent, arrive, wall, items) {
     seats: seatsFor(items),
     shelves: shelvesFor(items),
     wardrobe: items.some(([fn]) => fn === drawWardrobe),
+    spooky: spookyCount(items),
     draw(ctx) {
       paintRoom(ctx, ROOMS_MUM_WIDTH, wall);
       furnish(ctx, items);
@@ -154,9 +163,11 @@ function neighbourRoom(arrive, mumKey, dadKey, kitchenKey, wall, ...items) {
     doors: [door, kitchenDoor, mumDoor, dadDoor],
     seats,
     shelves: shelvesFor(items),
+    spooky: HOUSE_DECOR.length,
     draw(ctx) {
       paintRoom(ctx, width, wall);
       furnish(ctx, items);
+      drawHouseDecor(ctx);
       drawDoor(ctx, door.x, door.label);
       drawDoor(ctx, mumDoor.x, mumDoor.label);
       drawDoor(ctx, dadDoor.x, dadDoor.label);
@@ -172,12 +183,14 @@ function kitchenRoom(parent, wall, accent) {
     doors: [door],
     shelves: [500],
     fridge: FRIDGE_X,
+    spooky: HOUSE_DECOR.length,
     seats: [
       { name: "stool", x: 1520, reach: 40, height: 45, dir: 1 },
       { name: "stool", x: 1740, reach: 40, height: 45, dir: -1 },
     ],
     draw(ctx) {
       drawKitchen(ctx, KITCHEN_WIDTH, wall, accent);
+      drawHouseDecor(ctx);
       drawDoor(ctx, door.x, door.label);
     },
   };
@@ -411,6 +424,17 @@ function nearPotion(player) {
 }
 
 const POTION_PRICE = 2;
+const PETS = [
+  { kind: "spider", price: 4, x: 725 },
+  { kind: "bat", price: 6, x: 800 },
+  { kind: "cat", price: 8, x: 875 },
+  { kind: "owl", price: 10, x: 950 },
+];
+const PET_REACH = 37;
+const petImages = {};
+const nearPet = (player) =>
+  player.room === "shop" ? PETS.find((p) => Math.abs(player.x - p.x) < PET_REACH) : undefined;
+
 const COUNTER_X = 1000;
 const COUNTER_W = 320;
 const nearCounter = (player) => player.room === "shop" && player.x >= COUNTER_X && player.x <= COUNTER_X + COUNTER_W;
@@ -507,12 +531,12 @@ export async function startHome(canvas, character) {
     helperKind: character.helper,
     helperImage: character.helper === "none" ? null : await loadSvg(helperSvg(character.helper)),
   };
+  for (const { kind } of PETS) petImages[kind] = await loadSvg(helperSvg(kind));
   tapped.clear();
-  sports = sp.createSports();
   talk = createTalk();
   sports = sp.createSports();
   world = createParents(ROOMS, DOOR_W, openFridges);
-  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, actions: () => availableActions(player), talk, sports: () => sports, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
+  window.__game = { player, rooms: ROOMS, pets: PETS, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, actions: () => availableActions(player), talk, sports: () => sports, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
   let last = performance.now();
 
   const tick = (now) => {
@@ -691,6 +715,8 @@ function availableActions(player) {
   if (wardrobeOpen && litRobe.has(player.room)) add("G", "Put on dress", () => wearDress(player));
   if (nearFridge(player)) add("O", openFridges.has(player.room) ? "Close fridge" : "Open fridge", () => toggleFridge(player));
   if (potion) add("T", player.room === "shop" ? "Put potion in basket" : "Take potion", () => takePotion(player, potion));
+  const pet = nearPet(player);
+  if (pet && player.helperKind !== pet.kind) add("Y", `Buy ${pet.kind} (${pet.price} coins)`, () => buyPet(player, pet));
   if (nearCounter(player) && player.basket.length) add("P", `Pay ${player.basket.length * POTION_PRICE} coins`, () => payAtCounter(player));
   if (player.room === "arena") {
     if (sp.nearStart(player.x)) add("F", sports.racing ? "Restart race" : "Start race", () => { sp.startRace(sports); sfx.take(); });
@@ -737,6 +763,14 @@ function sitDown(player, seat) {
   player.crouch = false;
 }
 
+function buyPet(player, pet) {
+  if (player.helperKind === pet.kind || pet.price > player.money) { sfx.stand(); return; }
+  player.money -= pet.price;
+  player.helperKind = pet.kind;
+  player.helperImage = petImages[pet.kind];
+  sfx.take();
+}
+
 function payAtCounter(player) {
   const cost = player.basket.length * POTION_PRICE;
   if (!cost) return;
@@ -770,7 +804,7 @@ function draw(ctx, player) {
   drawParents(ctx, player.room);
   drawKid(ctx, player);
   drawTalk(ctx, player);
-  if (!player.seat && (nearDoor(player) || nearSeat(player) || nearWardrobe(player) || nearPotion(player) || nearFridge(player))) drawDoorHint(ctx, player);
+  if (!player.seat && (nearDoor(player) || nearSeat(player) || nearWardrobe(player) || nearPotion(player) || nearFridge(player) || nearPet(player))) drawDoorHint(ctx, player);
   ctx.restore();
   drawBag(ctx, player);
   if (player.room === "arena") drawScoreboard(ctx);
@@ -818,6 +852,7 @@ function drawHome(ctx) {
   drawCauldron(ctx, 1000);
   drawBroom(ctx, 1400);
   for (const door of ROOMS.home.doors) drawDoor(ctx, door.x, door.label);
+  drawHouseDecor(ctx);
 }
 
 function drawOutside(ctx) {
@@ -1055,6 +1090,29 @@ function drawScoreboard(ctx) {
   ctx.fillRect(VIEW_W / 2 - w / 2, 10, w, 36);
   ctx.fillStyle = "#ffd166";
   ctx.fillText(text, VIEW_W / 2, 36);
+}
+
+function drawPetCages(ctx) {
+  for (const pet of PETS) {
+    ctx.fillStyle = "#1a0f24";
+    ctx.fillRect(pet.x - 32, FLOOR_Y - 90, 64, 90);
+    ctx.fillStyle = "#b9a6e6";
+    ctx.fillRect(pet.x - 28, FLOOR_Y - 86, 56, 82);
+    const img = petImages[pet.kind];
+    if (img) ctx.drawImage(img, pet.x - 26, FLOOR_Y - 84, 52, 52);
+    ctx.strokeStyle = "#8a7a9a";
+    ctx.lineWidth = 2;
+    for (let i = -20; i <= 20; i += 10) {
+      ctx.beginPath();
+      ctx.moveTo(pet.x + i, FLOOR_Y - 86);
+      ctx.lineTo(pet.x + i, FLOOR_Y - 4);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#ffd166";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${pet.price}`, pet.x, FLOOR_Y - 96);
+  }
 }
 
 function drawShopFront(ctx, cx) {
@@ -1489,6 +1547,7 @@ function drawMumRoom(ctx, w = ROOMS.mum.width, wall = "#5b3a6e", doorX = ROOMS.m
   drawChair(ctx, 1010);
   drawMirror(ctx, 1235, FLOOR_Y - 70);
   drawBed(ctx, 1300);
+  drawHouseDecor(ctx);
   drawDoor(ctx, doorX, "Back");
 }
 
