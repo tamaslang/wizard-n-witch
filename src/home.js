@@ -500,7 +500,7 @@ export async function startHome(canvas, character) {
   };
   talk = createTalk();
   world = createParents(ROOMS, DOOR_W, openFridges);
-  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, talk, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
+  window.__game = { player, shopDoor: () => ROOMS.outside.doors.find((d) => d.id === "shop"), takenPotions, parents: world.parents, openFridges, fridgeX: FRIDGE_X, parentControl: world, actions: () => availableActions(player), talk, parentFace, shopLadyFace: () => ({ x: 1250, y: 278 }), openWardrobes, litRobe, cupboardPotions, robeColours: ROBE_COLOURS, wardrobeKnob: (room) => ({ x: WARDROBE_X[room] + 75, y: 270 }) };
   let last = performance.now();
 
   const tick = (now) => {
@@ -537,14 +537,16 @@ function update(player, dt) {
   const leftPressed = ["ArrowLeft", "KeyA"].some((k) => tapped.has(k));
   const downPressed = ["ArrowDown", "KeyS"].some((k) => tapped.has(k));
   const rightPressed = ["ArrowRight", "KeyD"].some((k) => tapped.has(k));
+  const actions = player.room ? availableActions(player) : [];
+  const actionTaps = actions.filter((a) => tapped.has(a.code));
   tapped.clear();
+  for (const a of actionTaps) a.run();
+  syncActionBar(availableActions(player));
   if (rightPressed) talk.answer();
 
   if (player.seat) {
     if (move || upPressed || downPressed) {
-      player.seat = null;
-      sfx.stand();
-      player.vy = JUMP_SPEED * 0.45;
+      standUp(player);
       if (move) player.dir = move;
     } else {
       player.walk = 0;
@@ -571,18 +573,17 @@ function update(player, dt) {
   const up = UP_KEYS.some((k) => keys.has(k));
   const wardrobeOpen = nearWardrobe(player) && openWardrobes.has(player.room);
   if (wardrobeOpen && grounded && left && up && (upPressed || leftPressed)) {
-    litRobe.set(player.room, ((litRobe.get(player.room) ?? -1) + 1) % ROBE_COLOURS.length);
-    sfx.take();
+    nextDress(player);
   }
   if (grounded && downPressed && nearCounter(player)) payAtCounter(player);
   if (grounded && downPressed && player.room === "myRoom" && nearWardrobe(player) && !litRobe.has(player.room) && player.bag.length) {
-    cupboardPotions.push(...player.bag);
-    player.bag = [];
-    sfx.take();
+    storePotions(player);
+  }
+  if (wardrobeOpen && grounded && rightPressed && player.room === "myRoom" && !litRobe.has(player.room) && cupboardPotions.length) {
+    takeFromCupboard(player);
   }
   if (wardrobeOpen && grounded && downPressed && litRobe.has(player.room)) {
-    player.dress = ROBE_COLOURS[litRobe.get(player.room)];
-    sfx.take();
+    wearDress(player);
   }
   const parent = nearParent(player);
   if (grounded && downPressed && !nearCounter(player) && !nearWardrobe(player)) talk.hello(parent);
@@ -590,14 +591,10 @@ function update(player, dt) {
   if (grounded && !player.crouch && door && upPressed) enterDoor(player, door);
   else if (grounded && !player.crouch && !door && upPressed && nearSeat(player)) sitDown(player, nearSeat(player));
   else if (grounded && !player.crouch && !door && !nearSeat(player) && upPressed && !left && nearWardrobe(player)) {
-    const had = openWardrobes.delete(player.room);
-    if (!had) openWardrobes.add(player.room);
-    litRobe.delete(player.room);
-    sfx.take();
+    toggleWardrobe(player);
   }
   else if (grounded && !player.crouch && !door && !nearSeat(player) && upPressed && nearFridge(player)) {
-    if (!openFridges.delete(player.room)) openFridges.add(player.room);
-    sfx.take();
+    toggleFridge(player);
   }
   else if (grounded && !player.crouch && !door && !nearSeat(player) && upPressed && nearPotion(player)) takePotion(player, nearPotion(player));
   else if (grounded && !player.crouch && !door && !nearSeat(player) && !nearWardrobe(player) && !nearFridge(player) && upPressed && parent) talk.ask(parent);
@@ -615,6 +612,97 @@ function update(player, dt) {
   }
   const target = player.x - player.dir * 75;
   player.helperX += (target - player.helperX) * Math.min(1, dt * 5);
+}
+
+function toggleWardrobe(player) {
+  if (!openWardrobes.delete(player.room)) openWardrobes.add(player.room);
+  litRobe.delete(player.room);
+  sfx.take();
+}
+
+function toggleFridge(player) {
+  if (!openFridges.delete(player.room)) openFridges.add(player.room);
+  sfx.take();
+}
+
+function storePotions(player) {
+  cupboardPotions.push(...player.bag);
+  player.bag = [];
+  sfx.take();
+}
+
+function takeFromCupboard(player) {
+  player.bag.push(cupboardPotions.pop());
+  sfx.take();
+}
+
+function nextDress(player) {
+  litRobe.set(player.room, ((litRobe.get(player.room) ?? -1) + 1) % ROBE_COLOURS.length);
+  sfx.take();
+}
+
+function wearDress(player) {
+  player.dress = ROBE_COLOURS[litRobe.get(player.room)];
+  sfx.take();
+}
+
+function standUp(player) {
+  player.seat = null;
+  sfx.stand();
+  player.vy = JUMP_SPEED * 0.45;
+}
+
+function availableActions(player) {
+  if (player.seat) return [{ id: "stand", code: "KeyC", key: "C", label: "Stand up", run: () => standUp(player) }];
+  if (player.y !== 0 || player.crouch) return [];
+  const list = [];
+  const add = (key, label, run) => list.push({ id: label, code: `Key${key}`, key, label, run });
+  const door = nearDoor(player);
+  const seat = nearSeat(player);
+  const parent = nearParent(player);
+  const potion = nearPotion(player);
+  const wardrobe = nearWardrobe(player);
+  const wardrobeOpen = wardrobe && openWardrobes.has(player.room);
+  const inMyRoom = player.room === "myRoom";
+  if (door) add("E", `Enter ${door.label ?? "the house"}`, () => enterDoor(player, door));
+  if (seat) add("C", seat.name === "bed" ? "Lie down" : "Sit down", () => sitDown(player, seat));
+  if (wardrobe) add("O", wardrobeOpen ? "Close wardrobe" : "Open wardrobe", () => toggleWardrobe(player));
+  if (wardrobeOpen && inMyRoom && cupboardPotions.length && !litRobe.has(player.room)) add("T", "Take potion out", () => takeFromCupboard(player));
+  if (wardrobe && inMyRoom && player.bag.length && !litRobe.has(player.room)) add("P", "Put potions away", () => storePotions(player));
+  if (wardrobeOpen) add("N", "Next dress", () => nextDress(player));
+  if (wardrobeOpen && litRobe.has(player.room)) add("G", "Put on dress", () => wearDress(player));
+  if (nearFridge(player)) add("O", openFridges.has(player.room) ? "Close fridge" : "Open fridge", () => toggleFridge(player));
+  if (potion) add("T", player.room === "shop" ? "Put potion in basket" : "Take potion", () => takePotion(player, potion));
+  if (nearCounter(player) && player.basket.length) add("P", `Pay ${player.basket.length * POTION_PRICE} coins`, () => payAtCounter(player));
+  if (parent) {
+    add("H", "Say hello", () => talk.hello(parent));
+    add("Q", "Ask a question", () => talk.ask(parent));
+    if (talk.state.pending) add("R", "Answer", () => talk.answer());
+  }
+  return list.filter((a, i) => list.findIndex((b) => b.code === a.code) === i);
+}
+
+const actionBar = document.getElementById("actions");
+let barSignature = "";
+
+function syncActionBar(actions) {
+  if (!actionBar) return;
+  const signature = actions.map((a) => `${a.code}:${a.label}`).join("|");
+  if (signature === barSignature) return;
+  barSignature = signature;
+  actionBar.replaceChildren(...actions.map((a) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "action";
+    b.dataset.code = a.code;
+    b.innerHTML = `<kbd>${a.key}</kbd> <span></span>`;
+    b.lastElementChild.textContent = a.label;
+    const press = (e) => { e.preventDefault(); tapped.add(a.code); };
+    b.addEventListener("pointerdown", press);
+    b.addEventListener("keydown", (e) => e.stopPropagation());
+    return b;
+  }));
+  actionBar.hidden = !actions.length;
 }
 
 function sitDown(player, seat) {

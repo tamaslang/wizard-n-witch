@@ -64,6 +64,10 @@ button {
 button:hover, button:focus-visible { background: #ffd166; }
 button:disabled { opacity: .4; cursor: not-allowed; }
 
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; width: min(96vw, 960px); margin-top: .6rem; min-height: 2.6rem; }
+.actions[hidden] { display: flex; visibility: hidden; }
+.actions .action { display: inline-flex; align-items: center; gap: .5rem; padding: .4rem .9rem; font-size: 1.05rem; border-radius: 999px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.actions kbd { background: #ffd166; color: #2a1a3a; border-radius: 6px; padding: 0 .5rem; font-weight: 800; }
 .touch { display: none; width: min(96vw, 960px); justify-content: space-between; margin-top: .6rem; }
 .touch .pad { display: flex; gap: .8rem; }
 .touch button { width: 84px; height: 84px; font-size: 2rem; padding: 0; border-radius: 50%; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
@@ -71,6 +75,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 @media (pointer: coarse) {
   .touch { display: flex; }
   .hint { display: none; }
+  .actions .action { min-height: 56px; padding: .6rem 1.4rem; font-size: 1.3rem; box-shadow: 0 0 14px #ffd16688; }
+  .actions kbd { display: none; }
   #home-screen { touch-action: none; }
 }
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {

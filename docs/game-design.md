@@ -11,6 +11,7 @@ Design your own witch or wizard — from the shape of the head all the way down 
 ## Platform
 
 - Browser game for **desktop, laptop and phones** (keyboard on desktop; on-screen buttons on touch devices).
+- **Action keys:** whenever something can be done, a hint appears under the game with its key: **E** enter a door, **C** sit / lie down / stand up, **O** open or close a wardrobe or fridge, **T** take a potion (or take one out of your cupboard), **P** pay at the counter / put potions in your cupboard, **N** next dress, **G** put on the dress, **H** say hello, **Q** ask a question, **R** answer. On touch devices the same hints become big tappable buttons. The old arrow-key shortcuts still work.
 - On touch devices, ◀ ▶ walk and ▲ jumps / uses doors and seats / ▼ crouches. Landscape works best.
 - Modern, widely compatible web tech: plain HTML, CSS and ES modules; no build step.
 
