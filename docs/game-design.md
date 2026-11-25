@@ -11,6 +11,10 @@ Design your own witch or wizard — from the shape of the head all the way down 
 ## Platform
 
 - Browser game for **desktop, laptop and phones** (keyboard on desktop; on-screen buttons on touch devices).
+- **Action keys:** whenever something can be done, a hint pops up as an overlay on the game (the picture never jumps). The main action is highlighted and runs with **Enter**; the others use their letter: **E** enter a door, **C** sit / lie down / stand up, **O** open or close a wardrobe or fridge, **T** take a potion (or take one out of your cupboard), **P** pay at the counter / put potions in your cupboard, **N** next dress, **G** put on the dress, **H** say hello, **Q** ask a question, **R** answer. On touch devices the same hints become big tappable buttons. The old arrow-key shortcuts still work.
+- **Sports arena:** a spooky arena on the street, right of the shop. Inside there is a running track with four hurdles (jump over them to score; walking into one bumps you back), a **START** line (**F** starts a timed race, the **FINISH** line stops it and keeps your best time) and a basketball hoop (**B** shoots a basket). A scoreboard shows hurdles, baskets and best time.
+- **Animals:** the shop has four cages (spider 4, bat 6, cat 8, owl 10 coins). Stand at a cage and press **Y** (or Enter) to buy it; it becomes your helper and replaces the old one. Not enough coins, or already having it, means no purchase.
+- **Spooky houses:** every room in every house (halls, kitchens, bedrooms) has hanging bats, candles and a spider — 4 spooky things, just under the shop's 5, so houses are nearly as spooky as the shop but never spookier.
 - On touch devices, ◀ ▶ walk and ▲ jumps / uses doors and seats / ▼ crouches. Landscape works best.
 - Modern, widely compatible web tech: plain HTML, CSS and ES modules; no build step.
 
@@ -19,7 +23,7 @@ Design your own witch or wizard — from the shape of the head all the way down 
 1. **Open screen** — title and start button.
 2. **Character choice** — pick witch or wizard.
 3. **Character designer** — head shape, hair, clothes, hat, shoes, colours.
-4. **Home** — the player starts as a kid living in their house with their parents.
+4. **Home** — the player starts as a kid living in their house with their parents. Every mum and dad (ours and the neighbours') lives their own day: they walk, cook, sit, sleep, shop, work at the shop and visit other houses. In the kitchen, ↑ at the fridge opens it to show yummy food; parents open it too. Next to a parent, ↓ says hello (they greet you and ask a question), ↑ asks them a question, and → answers theirs.
 5. **Adventure** — side-scrolling world; do good deeds to collect jewels.
 6. **Shop** — spend jewels to buy an animal helper.
 7. **Helper** — the animal follows the player on adventures.

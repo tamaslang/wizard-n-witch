@@ -57,3 +57,36 @@ test("potions taken from shelves in other houses and my own house go in the cupb
   await page.keyboard.press("ArrowDown");
   await expect.poll(() => counts(page)).toEqual({ bag: 0, stored: 2 });
 });
+
+const openCupboard = async (page) => {
+  await page.keyboard.press("ArrowUp");
+  await page.waitForFunction(() => window.__game.openWardrobes.has("myRoom"));
+};
+
+test("right at my open cupboard takes the last potion bottle out", async ({ page }) => {
+  await startInMyRoom(page, 375);
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => counts(page)).toEqual({ bag: 0, stored: 2 });
+  await openCupboard(page);
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(() => counts(page)).toEqual({ bag: 1, stored: 1 });
+  expect(await page.evaluate(() => window.__game.player.bag)).toEqual(["#5fd0ff"]);
+});
+
+test("right at a closed cupboard takes nothing (unhappy path)", async ({ page }) => {
+  await startInMyRoom(page, 375);
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => counts(page)).toEqual({ bag: 0, stored: 2 });
+  await page.keyboard.press("ArrowRight");
+  await page.waitForTimeout(150);
+  expect(await counts(page)).toEqual({ bag: 0, stored: 2 });
+});
+
+test("right at an empty open cupboard takes nothing (unhappy path)", async ({ page }) => {
+  await startInMyRoom(page, 375);
+  await page.evaluate(() => { window.__game.player.bag = []; });
+  await openCupboard(page);
+  await page.keyboard.press("ArrowRight");
+  await page.waitForTimeout(150);
+  expect(await counts(page)).toEqual({ bag: 0, stored: 0 });
+});

@@ -11,20 +11,32 @@ async function startGame(page) {
   await page.waitForFunction(() => window.__game);
 }
 
-const sample = (page, visit, lookup) =>
-  page.evaluate(([visit, lookup]) => {
-    window.__game.player.room = visit;
-    window.__game.player.x = 900;
+const sample = (page, visit, id) =>
+  page.evaluate(([visit, id]) => {
+    const g = window.__game;
+    g.parentControl.place(id, "pinkDad", 1000);
+    g.player.room = visit;
+    g.player.x = 900;
     return new Promise((resolve) => setTimeout(() => {
-      const { x, y } = window.__game.dadFace(lookup);
-      resolve([...document.getElementById("game").getContext("2d").getImageData(x - 420, y, 1, 1).data]);
+      const { x, y } = g.parentFace(id);
+      resolve([...document.getElementById("game").getContext("2d").getImageData(x, y, 1, 1).data]);
     }, 150));
-  }, [visit, lookup]);
+  }, [visit, id]);
 
 for (const room of dadRooms) {
   test(`${room} has a dad standing in it`, async ({ page }) => {
     await startGame(page);
-    expect(await sample(page, room, room)).toEqual(SKIN);
+    const pixel = await page.evaluate((room) => {
+      const g = window.__game;
+      g.parentControl.place(room, room, 1000);
+      g.player.room = room;
+      g.player.x = 900;
+      return new Promise((resolve) => setTimeout(() => {
+        const { x, y } = g.parentFace(room);
+        resolve([...document.getElementById("game").getContext("2d").getImageData(x, y, 1, 1).data]);
+      }, 150));
+    }, room);
+    expect(pixel).toEqual(SKIN);
   });
 }
 
